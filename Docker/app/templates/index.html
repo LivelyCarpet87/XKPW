@@ -41,7 +41,10 @@
 
   <!-- Result Section -->
   <section class="bg-gray-50 p-4 rounded border flex flex-col md:flex-row md:justify-between items-center gap-4">
-    <pre id="result" class="whitespace-pre-wrap text-center md:text-left"></pre>
+    <div class="flex-1 w-full">
+      <pre id="result" class="whitespace-pre-wrap text-center md:text-left"></pre>
+      <div id="timer" class="text-sm text-red-600 font-mono mt-2 text-center md:text-left"></div>
+    </div>
     <button onclick="copyToClipboard()" class="bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-800">Copy to Clipboard</button>
   </section>
 
@@ -154,6 +157,9 @@
 
 <script>
 let ADJ_LIST = [], NOUN_LIST = [], VERB_LIST = [];
+let clearTimerInterval = null;
+let clearTimerTimeout = null;
+let countdownSeconds = 300;
 
 async function loadWordlist(path) {
     const text = await fetch(path).then(r => r.text());
@@ -205,6 +211,38 @@ function isValidWord(word) {
         /^[a-z]+$/i.test(word)
     );
 }
+
+function updateTimerDisplay() {
+    const timerEl = document.getElementById('timer');
+    if (!timerEl) return;
+    const mins = Math.floor(countdownSeconds / 60);
+    const secs = countdownSeconds % 60;
+    timerEl.innerText = `Clearing in ${mins}:${secs.toString().padStart(2,'0')}`;
+}
+
+function startClearTimer() {
+    // clear existing timers
+    if (clearTimerInterval) clearInterval(clearTimerInterval);
+    if (clearTimerTimeout) clearTimeout(clearTimerTimeout);
+    countdownSeconds = 300;
+    updateTimerDisplay();
+    clearTimerInterval = setInterval(() => {
+        countdownSeconds--;
+        updateTimerDisplay();
+        if (countdownSeconds <= 0) {
+            clearInterval(clearTimerInterval);
+            clearTimerInterval = null;
+        }
+    }, 1000);
+    clearTimerTimeout = setTimeout(() => {
+        document.getElementById('result').innerText = '';
+        const timerEl = document.getElementById('timer');
+        if (timerEl) timerEl.innerText = 'Cleared for security';
+        if (clearTimerInterval) clearInterval(clearTimerInterval);
+        clearTimerInterval = null;
+        clearTimerTimeout = null;
+    }, 300000);
+}
 function generate() {
     if (!ADJ_LIST.length || !NOUN_LIST.length || !VERB_LIST.length) {
         document.getElementById('result').innerText = "Wordlists not loaded yet.";
@@ -252,6 +290,7 @@ function displayResult(data) {
     text += `4-digit PIN: ${data.PIN4}\n`;
     text += `6-digit PIN: ${data.PIN6}`;
     document.getElementById('result').innerText = text;
+    startClearTimer();
 }
 
 function copyToClipboard() {
