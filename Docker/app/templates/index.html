@@ -21,10 +21,21 @@
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
 
     <!-- Generate Section -->
-    <section class="flex flex-col items-center md:items-start bg-gray-50 p-4 rounded">
-      <h2 class="text-xl font-semibold mb-4">Generate Random Password Set</h2>
-      <button onclick="generate()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Generate</button>
-    </section>
+    <div class="flex flex-col gap-4">
+      <section class="flex flex-col items-center md:items-start bg-gray-50 p-4 md:grow rounded">
+        <h2 class="text-xl font-semibold mb-4">Generate Random Password Set</h2>
+        <button onclick="generate()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Generate Passwords</button>
+      </section>
+
+      <section class="flex items-center gap-3 bg-gray-50 p-4 rounded">
+        <label class="relative inline-flex cursor-pointer">
+          <input type="checkbox" id="autoClearToggle" class="sr-only peer" checked>
+          <div class="w-11 h-6 bg-gray-200 peer-checked:bg-blue-600 rounded-full transition-colors"></div>
+          <div class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform peer-checked:translate-x-5"></div>
+        </label>
+        <span class="text-sm text-gray-700">Auto-clear generated passwords after 5 minutes</span>
+      </section>
+    </div>
 
     <!-- Recover Section -->
     <section class="flex flex-col items-center md:items-start bg-gray-50 p-4 rounded">
@@ -35,17 +46,19 @@
         <input id="w3" placeholder="Verb" class="border rounded p-2 w-full">
         <input id="w4" placeholder="Noun2" class="border rounded p-2 w-full">
       </div>
-      <button onclick="recover()" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Recover</button>
+      <button onclick="recover()" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Recover Passwords</button>
     </section>
   </div>
 
   <!-- Result Section -->
-  <section class="bg-gray-50 p-4 rounded border flex flex-col md:flex-row md:justify-between items-center gap-4">
-    <div class="flex-1 w-full">
-      <pre id="result" class="whitespace-pre-wrap text-center md:text-left"></pre>
-      <div id="timer" class="text-sm text-red-600 font-mono mt-2 text-center md:text-left"></div>
+  <section class="bg-gray-50 p-4 rounded border">
+    <div class="flex flex-col md:flex-row md:justify-between items-start gap-4">
+      <pre id="result" class="whitespace-pre-wrap text-center md:text-left flex-1"></pre>
+      <div class=""flex flex-col items-start gap-4">
+        <button onclick="copyToClipboard()" class="bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-800">Copy to Clipboard</button>
+        <div id="timer" class="text-sm text-red-600 font-mono mt-2 px-1"></div>
+      </div>
     </div>
-    <button onclick="copyToClipboard()" class="bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-800">Copy to Clipboard</button>
   </section>
 
   <!-- Explanation Section -->
@@ -217,10 +230,20 @@ function updateTimerDisplay() {
     if (!timerEl) return;
     const mins = Math.floor(countdownSeconds / 60);
     const secs = countdownSeconds % 60;
-    timerEl.innerText = `Clearing in ${mins}:${secs.toString().padStart(2,'0')}`;
+    timerEl.innerText = `Auto-clears in ${mins}:${secs.toString().padStart(2,'0')}`;
 }
 
 function startClearTimer() {
+    const toggle = document.getElementById('autoClearToggle');
+    if (!toggle || !toggle.checked) {
+        const timerEl = document.getElementById('timer');
+        if (timerEl) timerEl.innerText = 'Auto-clear disabled';
+        if (clearTimerInterval) clearInterval(clearTimerInterval);
+        if (clearTimerTimeout) clearTimeout(clearTimerTimeout);
+        clearTimerInterval = null;
+        clearTimerTimeout = null;
+        return;
+    }
     // clear existing timers
     if (clearTimerInterval) clearInterval(clearTimerInterval);
     if (clearTimerTimeout) clearTimeout(clearTimerTimeout);
@@ -236,8 +259,12 @@ function startClearTimer() {
     }, 1000);
     clearTimerTimeout = setTimeout(() => {
         document.getElementById('result').innerText = '';
+        ['w1','w2','w3','w4'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
         const timerEl = document.getElementById('timer');
-        if (timerEl) timerEl.innerText = 'Cleared for security';
+        if (timerEl) timerEl.innerText = 'Auto-cleared';
         if (clearTimerInterval) clearInterval(clearTimerInterval);
         clearTimerInterval = null;
         clearTimerTimeout = null;
@@ -297,6 +324,27 @@ function copyToClipboard() {
     const text = document.getElementById('result').innerText;
     navigator.clipboard.writeText(text).then(() => alert('Copied to clipboard!'));
 }
+
+// Toggle handling for auto-clear feature
+document.addEventListener('DOMContentLoaded', () => {
+  const toggle = document.getElementById('autoClearToggle');
+  if (!toggle) return;
+  toggle.addEventListener('change', () => {
+    if (!toggle.checked) {
+      if (clearTimerInterval) clearInterval(clearTimerInterval);
+      if (clearTimerTimeout) clearTimeout(clearTimerTimeout);
+      clearTimerInterval = null;
+      clearTimerTimeout = null;
+      const timerEl = document.getElementById('timer');
+      if (timerEl) timerEl.innerText = 'Auto-clear disabled';
+    } else {
+      const resultText = document.getElementById('result').innerText.trim();
+      if (resultText && resultText !== 'Wordlists not loaded yet.' && resultText !== 'Please enter all 4 words.') {
+        startClearTimer();
+      }
+    }
+  });
+});
 </script>
 </body>
 </html>
